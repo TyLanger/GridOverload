@@ -15,6 +15,9 @@ public class TileGrid : MonoBehaviour
 
     public Tile tilePrefab;
     Tile[,] tiles;
+    public PreviewShape previewShape;
+
+    Shape currentShape;
 
     public Shape[] shapes;
 
@@ -49,6 +52,9 @@ public class TileGrid : MonoBehaviour
         {
             shapes[i].Initialize();
         }
+
+        currentShape = GenerateShape();
+        
     }
 
     public Tile GetTileFromPosition(float x, float y)
@@ -68,7 +74,7 @@ public class TileGrid : MonoBehaviour
         int yInt = Mathf.RoundToInt(y);
 
         // check bounds
-        if(isInBounds(xInt, yInt))
+        if(IsInBounds(xInt, yInt))
         {
             return tiles[xInt, yInt];
         }
@@ -82,7 +88,7 @@ public class TileGrid : MonoBehaviour
         }
     }
 
-    bool isInBounds(int x, int y)
+    bool IsInBounds(int x, int y)
     {
         if (x < 0 || y < 0)
             return false;
@@ -91,24 +97,77 @@ public class TileGrid : MonoBehaviour
         return true;
     }
 
-    public void Set(Tile t)
+    bool CanPlace(Shape s, Tile t)
     {
-        int randColour = Random.Range(1, 9);
+        for (int i = 0; i < s.cells.Length; i++)
+        {
+            Vector2Int pos = t.GetPosition();
+            pos += s.cells[i];
+            if(!IsInBounds(pos.x, pos.y))
+            {
+                return false;
+            }
+            if(!tiles[pos.x, pos.y].isEmpty)
+            {
+                return false;
+            }
+
+        }
+        return true;
+    }
+
+    public bool TrySet(Vector3 worldPosition)
+    {
+        return Set(GetTileFromPosition(worldPosition.x, worldPosition.y));
+    }
+
+    public bool Set(Tile t)
+    {
+
+        return Set(currentShape, t, currentShape.colour);
+    }
+
+    public bool Set(Shape shape, Tile tile, TileColour colour)
+    {
+        bool placeable = CanPlace(shape, tile);
+
+        if (placeable)
+        {
+            for (int i = 0; i < shape.cells.Length; i++)
+            {
+                Vector2Int pos = tile.GetPosition() + shape.cells[i];
+                tiles[pos.x, pos.y].SetColour(colour);
+                tiles[pos.x, pos.y].UpdateShape(shape);
+                tiles[pos.x, pos.y].FillTile();
+
+                
+            }
+            currentShape = GenerateShape();
+        }
+        else
+        {
+            //Debug.Log($"Nope {shape.tetromino}");
+        }
+        return placeable;
+    }
+
+    Shape GenerateShape()
+    {
+        int randColour = Random.Range(1, 6);
         int randShape = Random.Range(0, shapes.Length);
 
-        Set(shapes[randShape], t, (TileColour)randColour);
-    }
-
-    public void Set(Shape shape, Tile tile, TileColour colour)
-    {
-        
-        for (int i = 0; i < shape.cells.Length; i++)
+        Shape s = new Shape
         {
-            Vector2Int pos = tile.GetPosition() + shape.cells[i];
-            tiles[pos.x, pos.y].SetColour(colour);
-            tiles[pos.x, pos.y].UpdateShape(shape);
-        }
-    }
+            tetromino = (Tetromino)randShape,
+            colour = (TileColour)randColour
+        };
+        s.Initialize();
 
+        //Debug.Log($"Generated a {s.colour} {s.tetromino}");
+
+        previewShape.SetupCurrentShape(s.tetromino, s.colour);
+
+        return s;
+    }
 
 }

@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class PlayerInput : MonoBehaviour
 {
+    public Vector3 mouseWorldPos;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -13,13 +15,11 @@ public class PlayerInput : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(Input.GetButtonDown("Fire1"))
+        mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        if (Input.GetButtonDown("Fire1"))
         {
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            //Debug.Log($"Mouse: {mousePos}");
-            Tile t = TileGrid.instance.GetTileFromPosition(mousePos.x, mousePos.y);
-            //Debug.Log($"Tile t: {t.name}");
-            TileGrid.instance.Set(t);
+            TileGrid.instance.TrySet(mouseWorldPos);
         }
     }
 }

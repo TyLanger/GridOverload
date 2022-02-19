@@ -11,7 +11,7 @@ public class Tile : MonoBehaviour
     Shape myShape;
 
     bool isHollow = false;
-    bool isEmpty = true; // this or an empty colour?
+    public bool isEmpty = true; // this or an empty colour?
     bool hasShape = false;
 
     int gridX = 0;
@@ -33,6 +33,11 @@ public class Tile : MonoBehaviour
         return new Vector2Int(gridX, gridY);
     }
 
+    public void FillTile()
+    {
+        isEmpty = false;
+    }
+
     public void SetColour(TileColour newColour)
     {
         colour = newColour;
@@ -43,6 +48,5 @@ public class Tile : MonoBehaviour
     {
         myShape = newShape;
     }
-    
 
 }
