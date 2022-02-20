@@ -10,6 +10,7 @@ public class Tile : MonoBehaviour
     TileColour colour;
     Shape myShape;
 
+
     bool isHollow = false;
     public bool isEmpty = true; // this or an empty colour?
     bool hasShape = false;
@@ -49,4 +50,8 @@ public class Tile : MonoBehaviour
         myShape = newShape;
     }
 
+    public Shape GetShape()
+    {
+        return myShape;
+    }
 }

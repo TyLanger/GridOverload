@@ -81,7 +81,7 @@ public class TileGrid : MonoBehaviour
         else
         {
             //clamp?
-            Debug.Log($"Had to clamp. ({x},{y}) ({xInt},{yInt})");
+            //Debug.Log($"Had to clamp. ({x},{y}) ({xInt},{yInt})");
             xInt = Mathf.Clamp(xInt, 0, gridSize - 1);
             yInt = Mathf.Clamp(yInt, 0, gridSize - 1);
             return tiles[xInt, yInt];
@@ -137,11 +137,16 @@ public class TileGrid : MonoBehaviour
             {
                 Vector2Int pos = tile.GetPosition() + shape.cells[i];
                 tiles[pos.x, pos.y].SetColour(colour);
+                shape.AddMember(tiles[pos.x, pos.y]);
                 tiles[pos.x, pos.y].UpdateShape(shape);
                 tiles[pos.x, pos.y].FillTile();
 
-                
             }
+            Vector2Int centerPos = tile.GetPosition();
+            shape.SetHashCode(((centerPos.x+1) ^ (centerPos.y+1))*(int)shape.tetromino);
+            CheckMatch3(tile);
+            //Evaluate(currentShape, tile);
+
             currentShape = GenerateShape();
         }
         else
@@ -149,6 +154,108 @@ public class TileGrid : MonoBehaviour
             //Debug.Log($"Nope {shape.tetromino}");
         }
         return placeable;
+    }
+
+    void Evaluate(Shape shape, Tile tile)
+    {
+        // check for match 3
+        CheckMatch3(tile);
+        
+    }
+
+    void CheckMatch3(Tile tile)
+    {
+        Vector2Int tilePos = tile.GetPosition();
+        Shape shape = tile.GetShape();
+
+        //HashSet<Shape> shapesToCheck = new HashSet<Shape>();
+        HashSet<Shape> shapesChecked = new HashSet<Shape>();
+        Stack<Shape> stackToCheck = new Stack<Shape>();
+        stackToCheck.Push(shape);
+
+
+        int count = 0;
+        while (stackToCheck.Count > 0)
+        {
+            count++;
+            if (count > 100)
+            {
+                Debug.Log("Infinite loop?");
+                break;
+            }
+            Shape currentShape = stackToCheck.Pop();
+            shapesChecked.Add(currentShape);
+
+            foreach (Tile t in currentShape.GetMembers())
+            {
+                Vector2Int currentTilePosition = t.GetPosition();
+                Vector2Int northNeighbourPos = currentTilePosition + new Vector2Int(0, 1);
+                Vector2Int eastNeighbourPos = currentTilePosition + new Vector2Int(1, 0);
+                Vector2Int southNeighbourPos = currentTilePosition + new Vector2Int(0, -1);
+                Vector2Int westNeighbourPos = currentTilePosition + new Vector2Int(-1, 0);
+
+                // these could probably all be method(x,y,currentShape)
+                if(IsInBounds(northNeighbourPos.x, northNeighbourPos.y))
+                {
+                    Tile northTile = tiles[northNeighbourPos.x, northNeighbourPos.y];
+                    Shape northShape = northTile.GetShape();
+                    bool coloursMatch = northShape.colour == currentShape.colour;
+                    bool shapesMatch = northShape.Equals(currentShape);
+                    bool alreadyChecked = shapesChecked.Contains(northShape);
+
+                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    {
+                        stackToCheck.Push(northTile.GetShape());
+                    }
+                }
+                if (IsInBounds(eastNeighbourPos.x, eastNeighbourPos.y))
+                {
+                    Tile eastTile = tiles[eastNeighbourPos.x, eastNeighbourPos.y];
+                    Shape eastShape = eastTile.GetShape();
+                    bool coloursMatch = eastShape.colour == currentShape.colour;
+                    bool shapesMatch = eastShape.Equals(currentShape);
+                    bool alreadyChecked = shapesChecked.Contains(eastShape);
+
+                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    {
+                        stackToCheck.Push(eastTile.GetShape());
+                    }
+                }
+                if (IsInBounds(southNeighbourPos.x, southNeighbourPos.y))
+                {
+                    Tile southTile = tiles[southNeighbourPos.x, southNeighbourPos.y];
+                    Shape southShape = southTile.GetShape();
+                    bool coloursMatch = southShape.colour == currentShape.colour;
+                    bool shapesMatch = southShape.Equals(currentShape);
+                    bool alreadyChecked = shapesChecked.Contains(southShape);
+
+                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    {
+                        stackToCheck.Push(southTile.GetShape());
+                    }
+                }
+                if (IsInBounds(westNeighbourPos.x, westNeighbourPos.y))
+                {
+                    Tile westTile = tiles[westNeighbourPos.x, westNeighbourPos.y];
+                    Shape westShape = westTile.GetShape();
+                    bool coloursMatch = westShape.colour == currentShape.colour;
+                    bool shapesMatch = westShape.Equals(currentShape);
+                    bool alreadyChecked = shapesChecked.Contains(westShape);
+
+                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    {
+                        stackToCheck.Push(westTile.GetShape());
+                    }
+                }
+
+            }
+        }
+        Debug.Log($"Matches (match3): {shapesChecked.Count}");
+        foreach (Shape s in shapesChecked)
+        {
+            s.Match();
+        }
+
     }
 
     Shape GenerateShape()
