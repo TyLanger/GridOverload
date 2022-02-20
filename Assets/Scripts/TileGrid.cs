@@ -13,6 +13,9 @@ public class TileGrid : MonoBehaviour
     Vector2 gridBottomLeft;
     Vector2 gridCenter;
 
+    int tetrisLength = 6;
+    int matchNumber = 3;
+
     public Tile tilePrefab;
     Tile[,] tiles;
     public PreviewShape previewShape;
@@ -54,7 +57,7 @@ public class TileGrid : MonoBehaviour
         }
 
         currentShape = GenerateShape();
-        
+
     }
 
     public Tile GetTileFromPosition(float x, float y)
@@ -144,7 +147,8 @@ public class TileGrid : MonoBehaviour
             }
             Vector2Int centerPos = tile.GetPosition();
             shape.SetHashCode(((centerPos.x+1) ^ (centerPos.y+1))*(int)shape.tetromino);
-            CheckMatch3(tile);
+            //CheckMatch3(tile);
+            Evaluate(tile);
             //Evaluate(currentShape, tile);
 
             currentShape = GenerateShape();
@@ -156,14 +160,23 @@ public class TileGrid : MonoBehaviour
         return placeable;
     }
 
-    void Evaluate(Shape shape, Tile tile)
+    void Evaluate(Tile tile)
     {
         // check for match 3
-        CheckMatch3(tile);
+        HashSet<Tile> tilesToDestroy = CheckLine(tile);
+        HashSet<Shape> shapesToDestroy = CheckMatch3(tile);
+
+        Debug.Log($"Removal tiles/shapes: {tilesToDestroy.Count} {shapesToDestroy.Count}");
+
+        foreach (Shape s in shapesToDestroy)
+        {
+            s.DestroyShape();
+        }
+        RemoveTiles(tilesToDestroy);
         
     }
 
-    void CheckMatch3(Tile tile)
+    HashSet<Shape> CheckMatch3(Tile tile)
     {
         Vector2Int tilePos = tile.GetPosition();
         Shape shape = tile.GetShape();
@@ -173,6 +186,10 @@ public class TileGrid : MonoBehaviour
         Stack<Shape> stackToCheck = new Stack<Shape>();
         stackToCheck.Push(shape);
 
+        // only check full shapes towards the match 3
+        // but still delete broken shapes if they're nearby
+        int brokenShapes = 0;
+        
 
         int count = 0;
         while (stackToCheck.Count > 0)
@@ -184,7 +201,23 @@ public class TileGrid : MonoBehaviour
                 break;
             }
             Shape currentShape = stackToCheck.Pop();
+
+            // if a tile has the same shape as 2 of its neighbours, it can be added twice
+            // Like an O block and a S/Z block. The corners of the O can fit into the corner of the S/Z
+            // and make the O block have 2 neighbours that are both the same block
+            if(shapesChecked.Contains(currentShape))
+            {
+                if (stackToCheck.Count == 0)
+                    break;
+                currentShape = stackToCheck.Pop();
+            }
+
             shapesChecked.Add(currentShape);
+            Debug.Log($"Adding shape: {currentShape.tetromino}");
+            if (currentShape.tetromino == Tetromino.none)
+            {
+                brokenShapes++;
+            }
 
             foreach (Tile t in currentShape.GetMembers())
             {
@@ -198,64 +231,213 @@ public class TileGrid : MonoBehaviour
                 if(IsInBounds(northNeighbourPos.x, northNeighbourPos.y))
                 {
                     Tile northTile = tiles[northNeighbourPos.x, northNeighbourPos.y];
-                    Shape northShape = northTile.GetShape();
-                    bool coloursMatch = northShape.colour == currentShape.colour;
-                    bool shapesMatch = northShape.Equals(currentShape);
-                    bool alreadyChecked = shapesChecked.Contains(northShape);
-
-                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    if (northTile.HasShape())
                     {
-                        stackToCheck.Push(northTile.GetShape());
+                        Shape northShape = northTile.GetShape();
+                        bool coloursMatch = northShape.colour == currentShape.colour;
+                        bool shapesMatch = northShape.Equals(currentShape);
+                        bool alreadyChecked = shapesChecked.Contains(northShape);
+
+                        if (!alreadyChecked && coloursMatch && !shapesMatch)
+                        {
+                            stackToCheck.Push(northTile.GetShape());
+                        }
                     }
                 }
                 if (IsInBounds(eastNeighbourPos.x, eastNeighbourPos.y))
                 {
                     Tile eastTile = tiles[eastNeighbourPos.x, eastNeighbourPos.y];
-                    Shape eastShape = eastTile.GetShape();
-                    bool coloursMatch = eastShape.colour == currentShape.colour;
-                    bool shapesMatch = eastShape.Equals(currentShape);
-                    bool alreadyChecked = shapesChecked.Contains(eastShape);
-
-                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    if (eastTile.HasShape())
                     {
-                        stackToCheck.Push(eastTile.GetShape());
+                        Shape eastShape = eastTile.GetShape();
+                        bool coloursMatch = eastShape.colour == currentShape.colour;
+                        bool shapesMatch = eastShape.Equals(currentShape);
+                        bool alreadyChecked = shapesChecked.Contains(eastShape);
+
+                        if (!alreadyChecked && coloursMatch && !shapesMatch)
+                        {
+                            stackToCheck.Push(eastTile.GetShape());
+                        }
                     }
                 }
                 if (IsInBounds(southNeighbourPos.x, southNeighbourPos.y))
                 {
                     Tile southTile = tiles[southNeighbourPos.x, southNeighbourPos.y];
-                    Shape southShape = southTile.GetShape();
-                    bool coloursMatch = southShape.colour == currentShape.colour;
-                    bool shapesMatch = southShape.Equals(currentShape);
-                    bool alreadyChecked = shapesChecked.Contains(southShape);
-
-                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    if (southTile.HasShape())
                     {
-                        stackToCheck.Push(southTile.GetShape());
+                        Shape southShape = southTile.GetShape();
+                        bool coloursMatch = southShape.colour == currentShape.colour;
+                        bool shapesMatch = southShape.Equals(currentShape);
+                        bool alreadyChecked = shapesChecked.Contains(southShape);
+
+                        if (!alreadyChecked && coloursMatch && !shapesMatch)
+                        {
+                            stackToCheck.Push(southTile.GetShape());
+                        }
                     }
                 }
                 if (IsInBounds(westNeighbourPos.x, westNeighbourPos.y))
                 {
                     Tile westTile = tiles[westNeighbourPos.x, westNeighbourPos.y];
-                    Shape westShape = westTile.GetShape();
-                    bool coloursMatch = westShape.colour == currentShape.colour;
-                    bool shapesMatch = westShape.Equals(currentShape);
-                    bool alreadyChecked = shapesChecked.Contains(westShape);
-
-                    if (!alreadyChecked && coloursMatch && !shapesMatch)
+                    if (westTile.HasShape())
                     {
-                        stackToCheck.Push(westTile.GetShape());
+                        Shape westShape = westTile.GetShape();
+                        bool coloursMatch = westShape.colour == currentShape.colour;
+                        bool shapesMatch = westShape.Equals(currentShape);
+                        bool alreadyChecked = shapesChecked.Contains(westShape);
+
+                        if (!alreadyChecked && coloursMatch && !shapesMatch)
+                        {
+                            stackToCheck.Push(westTile.GetShape());
+                        }
                     }
                 }
 
             }
         }
-        Debug.Log($"Matches (match3): {shapesChecked.Count}");
-        foreach (Shape s in shapesChecked)
+        //Debug.Log($"Matches (match3): {shapesChecked.Count}");
+        Debug.Log($"Loop count: {count}");
+        // shouldn't destroy until done all evaluations
+        if((shapesChecked.Count - brokenShapes) >= matchNumber)
         {
-            s.Match();
+            // match 3
+            // destroy those shapes
+            Debug.Log($"brokenShapes/Count: {brokenShapes}/{shapesChecked.Count}");
+            return shapesChecked;
+            
         }
+        return new HashSet<Shape>();
+    }
 
+    HashSet<Tile> CheckLine(Tile tile)
+    {
+        // for each tile in the shape, check 10 to the left, right, up, down to see if there's a line of 10
+
+        Vector2Int tilePos = tile.GetPosition();
+        Shape shape = tile.GetShape();
+
+        HashSet<Tile> tilesToRemove = new HashSet<Tile>();
+
+        foreach (Tile t in shape.GetMembers())
+        {
+            
+            // N/S
+            Vector2Int currentTilePos = t.GetPosition();
+            Vector2Int northPos = currentTilePos + new Vector2Int(0, 1);
+
+            Tile topTile = tile;
+            int northCount = 0;
+            Tile bottomTile = tile;
+            int southCount = 0;
+            if (IsInBounds(northPos.x, northPos.y))
+            {
+                Tile northTile = tiles[northPos.x, northPos.y];
+                int count = 1;
+                bool outOfBounds = false;
+                while(!northTile.isEmpty)
+                {
+                    count++;
+                    if (count > 100)
+                        break;
+
+                    if (IsInBounds(northPos.x, northPos.y + 1))
+                    {
+                        northTile = tiles[northPos.x, northPos.y + 1];
+                        northPos = northTile.GetPosition();
+                    }
+                    else
+                    {
+                        outOfBounds = true;
+                        break;
+                    }
+                }
+                //Debug.Log($"North line length: {currentTilePos} {count}");
+                // only decrement if it ended on an empty tile, not if it reached the edge
+                if (!outOfBounds)
+                {
+                    topTile = tiles[northPos.x, northPos.y - 1];
+                }
+                else
+                {
+                    topTile = tiles[northPos.x, northPos.y];
+                }
+                northCount = count;
+            }
+
+            Vector2Int southPos = currentTilePos + new Vector2Int(0, -1);
+
+            if(IsInBounds(southPos.x, southPos.y))
+            {
+                Tile southTile = tiles[southPos.x, southPos.y];
+                int count = 0;
+                bool outOfBounds = false;
+                while (!southTile.isEmpty)
+                {
+                    count++;
+                    if (count > 100)
+                        break;
+
+                    if(IsInBounds(southPos.x, southPos.y-1))
+                    {
+                        southTile = tiles[southPos.x, southPos.y - 1];
+                        southPos = southTile.GetPosition();
+                    }
+                    else
+                    {
+                        outOfBounds = true;
+                        break;
+                    }
+                }
+                //Debug.Log($"South line length: {currentTilePos} {count}");
+                // only decrement if it ended on an empty tile, not if it reached the edge
+                if (!outOfBounds)
+                {
+                    bottomTile = tiles[southPos.x, southPos.y + 1];
+                }
+                else
+                {
+                    bottomTile = tiles[southPos.x, southPos.y];
+
+                }
+                southCount = count;
+            }
+
+            Debug.Log($"Line: {currentTilePos} {northCount} + {southCount} {topTile.GetPosition()}-{bottomTile.GetPosition()}");
+            if((northCount+southCount) >= tetrisLength)
+            {
+                AddTileLineVertical(tilesToRemove, topTile, bottomTile);
+                
+            }
+        }
+        return tilesToRemove;
+    }
+
+    void AddTileLineVertical(HashSet<Tile> set, Tile top, Tile bottom)
+    {
+        Debug.Log($"Top, bottom: {top.GetPosition()} {bottom.GetPosition()}");
+        Tile current = top;
+        int count = 0;
+        while(current != bottom)
+        {
+            //Debug.Log($"Current: {current.GetPosition()}");
+            count++;
+            if(count > 9)
+            {
+                Debug.Log($"Out of bounds. Infinite loop");
+            }    
+            set.Add(current);
+            Vector2Int currentPos = current.GetPosition();
+            current = tiles[currentPos.x, currentPos.y - 1];
+        }
+        set.Add(bottom);
+    }
+
+    void RemoveTiles(HashSet<Tile> setOfTiles)
+    {
+        foreach (Tile t in setOfTiles)
+        {
+            t.DestroyTileInLine();
+        }
     }
 
     Shape GenerateShape()

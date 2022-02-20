@@ -7,8 +7,7 @@ using UnityEngine;
 public struct Shape : IEquatable<Shape>
 {
 
-    Tile[] members;
-    int numMembers;
+    HashSet<Tile> members;
 
     int hashCode;
 
@@ -21,8 +20,7 @@ public struct Shape : IEquatable<Shape>
     public void Initialize()
     {
         cells = PieceData.Cells[tetromino];
-        members = new Tile[cells.Length];
-        numMembers = 0;
+        members = new HashSet<Tile>();
     }
 
     public void SetHashCode(int h)
@@ -37,39 +35,72 @@ public struct Shape : IEquatable<Shape>
 
     public void AddMember(Tile newMember)
     {
-        if (numMembers < members.Length)
-        {
-            members[numMembers] = newMember;
-            numMembers++;
-        }
+        members.Add(newMember);
     }
 
     public void RemoveMember(Tile member)
     {
-        for (int i = 0; i < members.Length; i++)
+        if (members.Contains(member))
         {
-            if (members[i] == member)
+            members.Remove(member);
+        }
+        // check if the shape should be split in 2
+        tetromino = Tetromino.none;
+        CheckShapeIntegrity();
+    }
+
+    void CheckShapeIntegrity()
+    {
+        foreach (Tile t in members)
+        {
+            if(!HasNeighbour(t))
             {
-                members[i] = null;
-                numMembers--;
+                // create your own shape
+                Shape newShape = new Shape();
+                newShape.Initialize();
+                newShape.colour = colour;
+                newShape.tetromino = Tetromino.none;
+                newShape.SetHashCode(hashCode + 1);
+                Vector2Int[] newCells = new Vector2Int[1]; 
+                newCells[0] = new Vector2Int(0, 0);
+                newShape.cells = newCells;  // cells are only used for placing. Probs don't need this
+                newShape.AddMember(t);
+                t.UpdateShape(newShape);
             }
         }
     }
 
-    public Tile[] GetMembers()
+    bool HasNeighbour(Tile t)
+    {
+        Vector2Int tilePos = t.GetPosition();
+        foreach (Tile tile in members)
+        {
+            if (t == tile)
+                continue;
+            Vector2Int comparePos = tile.GetPosition();
+            int xDiff = Mathf.Abs(tilePos.x - comparePos.x);
+            int yDiff = Mathf.Abs(tilePos.y - comparePos.y);
+
+            // if one is 1, the other is 0, you are neighbours
+            if((xDiff == 1 && yDiff == 0) || (xDiff == 0 && yDiff == 1))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public HashSet<Tile> GetMembers()
     {
         return members;
     }
 
-    public void Match()
+    public void DestroyShape()
     {
-        string memberString = "";
-        for (int i = 0; i < members.Length; i++)
+        foreach (Tile t in members)
         {
-            Vector2Int pos = members[i].GetPosition();
-            memberString += $"({pos.x},{pos.y}) ";
+            t.ResetTile();
         }
-        Debug.Log($"Match shape: {tetromino} Members: {memberString}");
     }
 
     public bool Equals(Shape other)

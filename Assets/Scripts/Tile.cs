@@ -48,10 +48,35 @@ public class Tile : MonoBehaviour
     public void UpdateShape(Shape newShape)
     {
         myShape = newShape;
+        hasShape = true;
     }
 
     public Shape GetShape()
     {
         return myShape;
+    }
+
+    public bool HasShape()
+    {
+        return hasShape;
+    }
+
+    public void ResetTile()
+    {
+        // called by the shape when the whole shape dies
+        isEmpty = true;
+        SetColour(TileColour.White);
+        hasShape = false;
+        myShape = new Shape();
+        myShape.Initialize();
+    }
+
+    public void DestroyTileInLine()
+    {
+        // called by the line deletion
+
+        myShape.RemoveMember(this);
+
+        ResetTile();
     }
 }
