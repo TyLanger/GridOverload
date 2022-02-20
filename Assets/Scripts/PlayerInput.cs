@@ -21,5 +21,10 @@ public class PlayerInput : MonoBehaviour
         {
             TileGrid.instance.TrySet(mouseWorldPos);
         }
+        if(Input.GetButtonDown("Fire2"))
+        {
+            // rotate
+            TileGrid.instance.Rotate(1);
+        }
     }
 }

@@ -19,6 +19,7 @@ public class TileGrid : MonoBehaviour
     public Tile tilePrefab;
     Tile[,] tiles;
     public PreviewShape previewShape;
+    int rotation = 0;
 
     Shape currentShape;
 
@@ -160,6 +161,20 @@ public class TileGrid : MonoBehaviour
         return placeable;
     }
 
+    public void Rotate(int direction)
+    {
+        previewShape.transform.Rotate(Vector3.forward, 90 * -direction);
+        for (int i = 0; i < currentShape.cells.Length; i++)
+        {
+            Vector2Int cell = currentShape.cells[i];
+
+            int x = Mathf.RoundToInt((cell.x * PieceData.RotationMatrix[0] * direction) + (cell.y * PieceData.RotationMatrix[1] * direction));
+            int y = Mathf.RoundToInt((cell.x * PieceData.RotationMatrix[2] * direction) + (cell.y * PieceData.RotationMatrix[3] * direction));
+
+            currentShape.cells[i] = new Vector2Int(x, y);
+        }
+    }
+
     void Evaluate(Tile tile)
     {
         // check for match 3
@@ -205,7 +220,11 @@ public class TileGrid : MonoBehaviour
             // if a tile has the same shape as 2 of its neighbours, it can be added twice
             // Like an O block and a S/Z block. The corners of the O can fit into the corner of the S/Z
             // and make the O block have 2 neighbours that are both the same block
-            if(shapesChecked.Contains(currentShape))
+
+            // Each tile in a shape adds all neighbours, then it moves on to the next shape
+            // so if 2 or more tiles neighbour the same shape (like 2 square blocks touching)
+            // that shape is added to the stack twice
+            while(shapesChecked.Contains(currentShape))
             {
                 if (stackToCheck.Count == 0)
                     break;
@@ -213,7 +232,7 @@ public class TileGrid : MonoBehaviour
             }
 
             shapesChecked.Add(currentShape);
-            Debug.Log($"Adding shape: {currentShape.tetromino}");
+            //Debug.Log($"Adding shape: {currentShape.tetromino}");
             if (currentShape.tetromino == Tetromino.none)
             {
                 brokenShapes++;
@@ -296,7 +315,7 @@ public class TileGrid : MonoBehaviour
             }
         }
         //Debug.Log($"Matches (match3): {shapesChecked.Count}");
-        Debug.Log($"Loop count: {count}");
+        //Debug.Log($"Loop count: {count}");
         // shouldn't destroy until done all evaluations
         if((shapesChecked.Count - brokenShapes) >= matchNumber)
         {
@@ -325,14 +344,14 @@ public class TileGrid : MonoBehaviour
             Vector2Int currentTilePos = t.GetPosition();
             Vector2Int northPos = currentTilePos + new Vector2Int(0, 1);
 
-            Tile topTile = tile;
+            Tile topTile = t;
             int northCount = 0;
-            Tile bottomTile = tile;
+            Tile bottomTile = t;
             int southCount = 0;
             if (IsInBounds(northPos.x, northPos.y))
             {
                 Tile northTile = tiles[northPos.x, northPos.y];
-                int count = 1;
+                int count = 1; // start at 1 to count current tile
                 bool outOfBounds = false;
                 while(!northTile.isEmpty)
                 {
@@ -402,11 +421,68 @@ public class TileGrid : MonoBehaviour
                 southCount = count;
             }
 
+            // E/W
+            Vector2Int eastPos = currentTilePos + new Vector2Int(1, 0);
+            Vector2Int westPos = currentTilePos + new Vector2Int(-1, 0);
+            Tile leftTile = t;
+            Tile rightTile = t;
+            int leftCount = 0;
+            int rightCount = 0;
+
+            if(IsInBounds(eastPos.x, eastPos.y))
+            {
+                Tile eastTile = tiles[eastPos.x, eastPos.y];
+                int count = 1; // start at 1 to count current tile
+                while(!eastTile.isEmpty)
+                {
+                    count++;
+                    if (count > 100)
+                        break;
+                    rightTile = eastTile;
+                    if(IsInBounds(eastPos.x+1, eastPos.y))
+                    {
+                        eastTile = tiles[eastPos.x + 1, eastPos.y];
+                        eastPos = eastTile.GetPosition();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                rightCount = count;
+            }
+            if(IsInBounds(westPos.x, westPos.y))
+            {
+                Tile westTile = tiles[westPos.x, westPos.y];
+                int count = 0;
+                while(!westTile.isEmpty)
+                {
+                    count++;
+                    if (count > 100)
+                        break;
+                    leftTile = westTile;
+                    if(IsInBounds(westPos.x-1, westPos.y))
+                    {
+                        westTile = tiles[westPos.x - 1, westPos.y];
+                        westPos = westTile.GetPosition();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                leftCount = count;
+            }
+
             Debug.Log($"Line: {currentTilePos} {northCount} + {southCount} {topTile.GetPosition()}-{bottomTile.GetPosition()}");
             if((northCount+southCount) >= tetrisLength)
             {
                 AddTileLineVertical(tilesToRemove, topTile, bottomTile);
-                
+            }
+            Debug.Log($"Line Hor: {currentTilePos} {leftCount} + {rightCount} {leftTile.GetPosition()}-{rightTile.GetPosition()}");
+            if ((leftCount+rightCount) >= tetrisLength)
+            {
+                AddTileLineHorizontal(tilesToRemove, leftTile, rightTile);
             }
         }
         return tilesToRemove;
@@ -414,7 +490,7 @@ public class TileGrid : MonoBehaviour
 
     void AddTileLineVertical(HashSet<Tile> set, Tile top, Tile bottom)
     {
-        Debug.Log($"Top, bottom: {top.GetPosition()} {bottom.GetPosition()}");
+        //Debug.Log($"Top, bottom: {top.GetPosition()} {bottom.GetPosition()}");
         Tile current = top;
         int count = 0;
         while(current != bottom)
@@ -432,6 +508,23 @@ public class TileGrid : MonoBehaviour
         set.Add(bottom);
     }
 
+    void AddTileLineHorizontal(HashSet<Tile> set, Tile left, Tile right)
+    {
+        Tile current = left;
+        int count = 0;
+        while(current != right)
+        {
+            count++;
+            if(count > 9)
+            {
+                Debug.Log("Out of bounds in horizontal");
+            }
+            set.Add(current);
+            Vector2Int currentPos = current.GetPosition();
+            current = tiles[currentPos.x + 1, currentPos.y];
+        }
+        set.Add(right);
+    }
     void RemoveTiles(HashSet<Tile> setOfTiles)
     {
         foreach (Tile t in setOfTiles)
