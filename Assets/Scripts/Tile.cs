@@ -15,6 +15,8 @@ public class Tile : MonoBehaviour
     public bool isEmpty = true; // this or an empty colour?
     bool hasShape = false;
 
+    public bool hasBeenWinChecked = false;
+
     int gridX = 0;
     int gridY = 0;
 
@@ -78,5 +80,16 @@ public class Tile : MonoBehaviour
         myShape.RemoveMember(this);
 
         ResetTile();
+    }
+
+    public void DebugColour()
+    {
+        Color currentColour = GetComponent<SpriteRenderer>().color;
+        GetComponent<SpriteRenderer>().color = new Color(currentColour.r, currentColour.g, currentColour.b, 0.75f);
+    }
+
+    public void ResetWinChecked()
+    {
+        hasBeenWinChecked = false;
     }
 }

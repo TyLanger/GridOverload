@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,7 +8,7 @@ using UnityEngine;
 
 public class TileGrid : MonoBehaviour
 {
-    int gridSize = 10;
+    int gridSize = 30; // need camera size 15 to see it all
     float tileSpacing = 1; // if I change this from 1, might break tile selection GetTileFromPosition()
 
     Vector2 gridBottomLeft;
@@ -19,11 +20,13 @@ public class TileGrid : MonoBehaviour
     public Tile tilePrefab;
     Tile[,] tiles;
     public PreviewShape previewShape;
-    int rotation = 0;
 
     Shape currentShape;
 
     public Shape[] shapes;
+
+
+    public event Action OnWinCheckFailed;
 
     public static TileGrid instance;
 
@@ -48,6 +51,7 @@ public class TileGrid : MonoBehaviour
                 Tile blankTile = Instantiate(tilePrefab, position, Quaternion.identity, transform);
                 blankTile.name = $"Tile {i},{j}";
                 blankTile.SetPosition(i, j);
+                OnWinCheckFailed += blankTile.ResetWinChecked;
                 tiles[i, j] = blankTile;
             }
         }
@@ -148,15 +152,9 @@ public class TileGrid : MonoBehaviour
             }
             Vector2Int centerPos = tile.GetPosition();
             shape.SetHashCode(((centerPos.x+1) ^ (centerPos.y+1))*(int)shape.tetromino);
-            //CheckMatch3(tile);
             Evaluate(tile);
-            //Evaluate(currentShape, tile);
 
             currentShape = GenerateShape();
-        }
-        else
-        {
-            //Debug.Log($"Nope {shape.tetromino}");
         }
         return placeable;
     }
@@ -189,6 +187,15 @@ public class TileGrid : MonoBehaviour
         }
         RemoveTiles(tilesToDestroy);
         
+        if(CheckForWin())
+        {
+            Win();
+        }
+        else
+        {
+            
+            OnWinCheckFailed?.Invoke();
+        }
     }
 
     HashSet<Shape> CheckMatch3(Tile tile)
@@ -247,6 +254,8 @@ public class TileGrid : MonoBehaviour
                 Vector2Int westNeighbourPos = currentTilePosition + new Vector2Int(-1, 0);
 
                 // these could probably all be method(x,y,currentShape)
+                // I'd need to send the stack and hashset
+                // can't just return null if it doesn't match
                 if(IsInBounds(northNeighbourPos.x, northNeighbourPos.y))
                 {
                     Tile northTile = tiles[northNeighbourPos.x, northNeighbourPos.y];
@@ -535,8 +544,8 @@ public class TileGrid : MonoBehaviour
 
     Shape GenerateShape()
     {
-        int randColour = Random.Range(1, 6);
-        int randShape = Random.Range(0, shapes.Length);
+        int randColour = UnityEngine.Random.Range(1, 6);
+        int randShape = UnityEngine.Random.Range(0, shapes.Length);
 
         Shape s = new Shape
         {
@@ -550,6 +559,92 @@ public class TileGrid : MonoBehaviour
         previewShape.SetupCurrentShape(s.tetromino, s.colour);
 
         return s;
+    }
+
+    void Win()
+    {
+        Debug.Log("You win!");
+    }
+
+    bool CheckForWin()
+    {
+        // win tiles
+        if (tiles[1, 1].isEmpty)
+            return false;
+        if(tiles[1,28].isEmpty)
+            return false;
+        if (tiles[28,1].isEmpty)
+            return false;
+        if (tiles[28, 28].isEmpty)
+            return false;
+        if (tiles[15, 15].isEmpty)
+            return false;
+        if (tiles[14, 14].isEmpty)
+            return false;
+
+        Debug.Log("All goals covered");
+        FloodFill(1, 1);
+
+        if (!tiles[1, 1].hasBeenWinChecked)
+        {
+            //Debug.Log("Failed at 1,1");
+            return false;
+        }
+        if (!tiles[1, 28].hasBeenWinChecked)
+        {
+            //Debug.Log("Failed at 1,28");
+            return false;
+        }
+        if (!tiles[28, 1].hasBeenWinChecked)
+        {
+            //Debug.Log("Failed at 28,1");
+            return false;
+        }
+        if (!tiles[28, 28].hasBeenWinChecked)
+        {
+            //Debug.Log("Failed at 28,28");
+            return false;
+        }
+        if (!tiles[15, 15].hasBeenWinChecked)
+        {
+            //Debug.Log("Failed at 15,15");
+            return false;
+        }
+        if (!tiles[14, 14].hasBeenWinChecked)
+        {
+            //Debug.Log("Failed at 14,14");
+            return false;
+        }
+
+        return true;
+    }
+
+    void FloodFill(int x, int y)
+    {
+        if(!IsInBounds(x, y))
+        {
+            return;
+        }
+
+        if(tiles[x,y].isEmpty)
+        {
+            return;
+        }
+
+        // don't check twice or else I get infinite loops
+        if(tiles[x,y].hasBeenWinChecked)
+        {
+            return;
+        }
+
+        // mark it checked
+        tiles[x, y].hasBeenWinChecked = true;
+        tiles[x,y].DebugColour();
+
+        FloodFill(x+1, y);
+        FloodFill(x, y+1);
+        FloodFill(x-1, y);
+        FloodFill(x, y-1);
     }
 
 }

@@ -26,5 +26,13 @@ public class PlayerInput : MonoBehaviour
             // rotate
             TileGrid.instance.Rotate(1);
         }
+        if(Input.GetKeyDown(KeyCode.Q))
+        {
+            TileGrid.instance.Rotate(-1);
+        }
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            TileGrid.instance.Rotate(1);
+        }
     }
 }
