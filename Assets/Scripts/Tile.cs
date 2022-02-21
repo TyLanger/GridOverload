@@ -67,7 +67,7 @@ public class Tile : MonoBehaviour
     {
         // called by the shape when the whole shape dies
         isEmpty = true;
-        SetColour(TileColour.White);
+        SetColour(TileColour.Empty);
         hasShape = false;
         myShape = new Shape();
         myShape.Initialize();

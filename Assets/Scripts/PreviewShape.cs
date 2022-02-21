@@ -44,6 +44,7 @@ public class PreviewShape : MonoBehaviour
         {
             Vector3 pos = tilesParent.position + new Vector3(cells[i].x, cells[i].y, 0);
             Tile t = Instantiate(tilePrefab, pos, Quaternion.identity, tilesParent);
+            t.GetComponent<SpriteRenderer>().sortingOrder = 1;
             t.SetColour(currentColour);
         }
 

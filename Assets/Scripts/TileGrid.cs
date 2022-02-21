@@ -51,6 +51,7 @@ public class TileGrid : MonoBehaviour
                 Tile blankTile = Instantiate(tilePrefab, position, Quaternion.identity, transform);
                 blankTile.name = $"Tile {i},{j}";
                 blankTile.SetPosition(i, j);
+                blankTile.SetColour(TileColour.Empty);
                 OnWinCheckFailed += blankTile.ResetWinChecked;
                 tiles[i, j] = blankTile;
             }
