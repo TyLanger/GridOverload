@@ -24,7 +24,14 @@ public class TileGrid : MonoBehaviour
     Shape currentShape;
 
     public Shape[] shapes;
+    int overloadCount = 0;
+    public GameObject[] gridArtsOverload1;
+    public GameObject[] gridArtsOverload2;
 
+    public UIMover[] overloadTexts;
+    public UIMover[] overloadTexts2;
+
+    public GameObject[] winMessage;
 
     public event Action OnWinCheckFailed;
 
@@ -103,6 +110,27 @@ public class TileGrid : MonoBehaviour
             return false;
         if (x >= gridSize || y >= gridSize)
             return false;
+
+        if(overloadCount == 0)
+        {
+            if (x < 9 || y < 9)
+                return false;
+            if (x > 21 || y > 21)
+                return false;
+        }
+        if(overloadCount == 1)
+        {
+            if (x < 9 && y < 9)
+                return false;
+            if (x > 21 && y > 21)
+                return false;
+            if (x < 9 && y > 21)
+                return false;
+            if (x > 21 && y < 9)
+                return false;
+        }
+
+
         return true;
     }
 
@@ -153,11 +181,82 @@ public class TileGrid : MonoBehaviour
             }
             Vector2Int centerPos = tile.GetPosition();
             shape.SetHashCode(((centerPos.x+1) ^ (centerPos.y+1))*(int)shape.tetromino);
+            OverloadCheck(tile);
             Evaluate(tile);
 
             currentShape = GenerateShape();
         }
         return placeable;
+    }
+
+    void OverloadCheck(Tile t)
+    {
+        if(overloadCount == 0)
+        {
+            foreach(Tile memberTile in t.GetShape().GetMembers())
+            {
+                Vector2Int memberPos = memberTile.GetPosition();
+                if(memberPos.x < 10 || memberPos.y < 10 || memberPos.x > 19 || memberPos.y > 19)
+                {
+                    // overload
+                    overloadCount = 1;
+                    Overload();
+                    return;
+                }
+            }
+        }
+        if(overloadCount == 1)
+        {
+            foreach (Tile memberTile in t.GetShape().GetMembers())
+            {
+                Vector2Int memberPos = memberTile.GetPosition();
+
+                int x = memberPos.x;
+                int y = memberPos.y;
+
+                bool NECorner = (x>19 && y>19); // 20,20
+                bool SECorner = (x>19 && y<10); // 20,9
+                bool SWCorner = (x<10 && y<10); // 9,9
+                bool NWCorner = (x<10 && y>19); // 9,20
+                if (NECorner || SECorner || SWCorner || NWCorner)
+                {
+                    // overload
+                    overloadCount = 2;
+                    Overload();
+                    return;
+                }
+            }
+        }
+    }
+
+    void Overload()
+    {
+        
+        if(overloadCount == 1)
+        {
+            foreach (UIMover text in overloadTexts)
+            {
+                text.Reset();
+                text.StartMoving();
+            }
+            for (int i = 0; i < gridArtsOverload1.Length; i++)
+            {
+                gridArtsOverload1[i].SetActive(true);
+            }
+        }
+        if (overloadCount == 2)
+        {
+            // they won't reset their postions correctly so I just made 2.
+            foreach (UIMover text in overloadTexts2)
+            {
+                text.Reset();
+                text.StartMoving();
+            }
+            for (int i = 0; i < gridArtsOverload2.Length; i++)
+            {
+                gridArtsOverload2[i].SetActive(true);
+            }
+        }
     }
 
     public void Rotate(int direction)
@@ -565,6 +664,11 @@ public class TileGrid : MonoBehaviour
     void Win()
     {
         Debug.Log("You win!");
+        for (int i = 0; i < winMessage.Length; i++)
+        {
+            winMessage[i].SetActive(true);
+
+        }
     }
 
     bool CheckForWin()
